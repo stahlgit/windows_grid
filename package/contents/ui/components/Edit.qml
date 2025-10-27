@@ -4,10 +4,8 @@ import QtQuick.Controls
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.kwin
-import QtQuick.LocalStorage
 
 Rectangle {
-  property int id
   property var dragging: false
   property int cols: 8
   property int rows: 6
@@ -17,19 +15,13 @@ Rectangle {
   property double previewHeight: 0
   property double previewX: 0
   property double previewY: 0
-  property double setWidth: 0
-  property double setHeight: 0
-  property double setX: 0
-  property double setY: 0
   property string backgroundColor: "#5f5f5f"
   property string selectionColor: "#ffffff"
   property string hoverColor: "#4996ff"
-  property double setDisplay: 0
+  property double selectedDisplay: 0
 
   id: edit
   color: "transparent"
-  anchors.fill: parent
-  anchors.margins: 10
 
   ColumnLayout {
     anchors.fill: parent
@@ -37,9 +29,11 @@ Rectangle {
     RowLayout {
 
       PlasmaComponents.SpinBox {
-        width: 0 // fix for binding loop console error - no idea why
-        height: 0 // fix for binding loop console error - no idea why
+        width: 0
+        height: 0
         value: cols
+        from: 1
+        to: 20
         onValueChanged: {
           cols = value
           lines.requestPaint()
@@ -54,6 +48,8 @@ Rectangle {
         width: 0
         height: 0
         value: rows
+        from: 1
+        to: 20
         onValueChanged: {
           rows = value
           lines.requestPaint()
@@ -84,17 +80,13 @@ Rectangle {
         width: 200
         model: screenList
         visible: screenList.length > 2
-        property bool isInitializing: true
 
         onCurrentIndexChanged: {
-          if (!isInitializing) {
-            setDisplay = displayCombo.currentIndex
-          }
+          selectedDisplay = displayCombo.currentIndex - 1
         }
         
         Component.onCompleted: {
-          displayCombo.currentIndex = (setDisplay + 1);
-          isInitializing = false;
+          displayCombo.currentIndex = 0
         }
       }
 
@@ -104,64 +96,12 @@ Rectangle {
         opacity: 0
       }
       
-      PlasmaComponents.Button {
-        icon.name: "checkbox"
-        onClicked: {
-          var db = LocalStorage.openDatabaseSync(database, "1.0", "", 1000000);
-          var preview = flowLayout.children[(id - 1)]
-          var displayNum = (setDisplay - 1);
 
-          if(
-            previewWidth !== 0 ||
-            previewHeight !== 0 ||
-            previewX !== 0 ||
-            previewY !== 0
-            ) {
-            
-            preview.boxWidth = (100 * previewWidth) / grid.width
-            preview.boxHeight = (100 * previewHeight) / grid.height
-            preview.boxX = (100 * previewX) / grid.width
-            preview.boxY = (100 * previewY) / grid.height
-            
-            db.transaction(
-              function(tx) {
-                tx.executeSql('UPDATE spaces2 SET width = '+ preview.boxWidth +', height = '+ preview.boxHeight +', x = '+ preview.boxX +', y = '+ preview.boxY +' WHERE rowid = ' + id);
-              }
-            )
-          }
-
-          db.transaction(
-            function(tx) {
-              tx.executeSql('UPDATE spaces2 SET display = '+ displayNum +' WHERE rowid = ' + id);
-            }
-          )
-
-          db.transaction(
-            function(tx) {
-              tx.executeSql('UPDATE grid SET x = '+ cols +', y = '+ rows +', gap = '+ gap +' WHERE rowid = 1');
-            }
-          )
-
-          preview.displayNum = displayNum;
-          this.parent.parent.parent.destroy();
-          mainColumnLayout.visible = true;
-        }
-      }
-      
-      PlasmaComponents.Button {
-        icon.name: "edit-redo"
-        onClicked: {
-          this.parent.parent.parent.destroy();
-          mainColumnLayout.visible = true;
-        }
-      }
 
       PlasmaComponents.Button {
         icon.name: "dialog-close"
         onClicked: {
-          this.parent.parent.parent.destroy();
-          mainColumnLayout.visible = true;
-          mainDialog.visible = false;
+          mainDialog.visible = false
         }
       }
     }
@@ -180,12 +120,9 @@ Rectangle {
         property double cellHeight: parent.height / rows
 
         onPositionChanged: (mouse) => {
+          var getGridX = Math.floor(mouse.x / cellWidth)
+          var getGridY = Math.floor(mouse.y / cellHeight)
 
-          var getGridX = Math.floor(mouse.x / cellWidth);
-          var getGridY = Math.floor(mouse.y / cellHeight);
-
-          // keep MouseArea values in bounds
-          // there's some weirdness with mouse position being tracked while dragging outside component
           if(
             mouse.x >= 0 &&
             mouse.x <= parent.width &&
@@ -195,63 +132,74 @@ Rectangle {
             getGridY < rows
           ) {
             if(!dragging) {
-
               // mouse hover
-              hoverBox.width = (cellWidth - gap);
-              hoverBox.height = (cellHeight - gap);
-              hoverBox.x = ((cellWidth * getGridX) + (gap / 2));
-              hoverBox.y = ((cellHeight * getGridY) + (gap / 2));
+              hoverBox.width = (cellWidth - gap)
+              hoverBox.height = (cellHeight - gap)
+              hoverBox.x = ((cellWidth * getGridX) + (gap / 2))
+              hoverBox.y = ((cellHeight * getGridY) + (gap / 2))
               
             } else {
-
               // mouse drag
-              var dirextionX = getGridX - storeX;
-              var dirextionY = getGridY - storeY;
+              var directionX = getGridX - storeX
+              var directionY = getGridY - storeY
 
-              var cellCountX = (dirextionX < 0 ? dirextionX * -1 : dirextionX) + 1;
-              var cellCountY = (dirextionY < 0 ? dirextionY * -1 : dirextionY) + 1;
+              var cellCountX = (directionX < 0 ? directionX * -1 : directionX) + 1
+              var cellCountY = (directionY < 0 ? directionY * -1 : directionY) + 1
 
-              if(dirextionX < 1) {
-                hoverBox.x = ((cellWidth * getGridX) + (gap / 2));
-                previewX = (cellWidth * getGridX);
+              if(directionX < 1) {
+                hoverBox.x = ((cellWidth * getGridX) + (gap / 2))
+                previewX = (cellWidth * getGridX)
               }
 
-              if(dirextionY < 1) {
-                hoverBox.y = ((cellHeight * getGridY) + (gap / 2));
-                previewY = (cellHeight * getGridY);
+              if(directionY < 1) {
+                hoverBox.y = ((cellHeight * getGridY) + (gap / 2))
+                previewY = (cellHeight * getGridY)
               }
 
-              hoverBox.width = ((cellWidth * cellCountX) - gap);
-              hoverBox.height = ((cellHeight * cellCountY) - gap);
+              hoverBox.width = ((cellWidth * cellCountX) - gap)
+              hoverBox.height = ((cellHeight * cellCountY) - gap)
 
-              previewWidth = (cellWidth * cellCountX);
-              previewHeight = (cellHeight * cellCountY);
-
+              previewWidth = (cellWidth * cellCountX)
+              previewHeight = (cellHeight * cellCountY)
             }
           }
         }
-        onPressed: (mouse) => {
-          dragging = true;
 
-          storeX = Math.floor(mouse.x / (parent.width / cols));
-          storeY = Math.floor(mouse.y / (parent.height / rows));
+        onPressed: (mouse) => {
+          dragging = true
+          storeX = Math.floor(mouse.x / (parent.width / cols))
+          storeY = Math.floor(mouse.y / (parent.height / rows))
         }
+
         onReleased: {
-          dragging = false;
+          dragging = false
           
-          shapePreview.width = hoverBox.width;
-          shapePreview.height = hoverBox.height;
-          shapePreview.x = hoverBox.x;
-          shapePreview.y = hoverBox.y;
+          shapePreview.width = hoverBox.width
+          shapePreview.height = hoverBox.height
+          shapePreview.x = hoverBox.x
+          shapePreview.y = hoverBox.y
+
+          // Apply tiling immediately on release
+          if (previewWidth > 0 && previewHeight > 0) {
+            var tileConfig = {
+              width: (100 * previewWidth) / grid.width,
+              height: (100 * previewHeight) / grid.height,
+              x: (100 * previewX) / grid.width,
+              y: (100 * previewY) / grid.height,
+              display: selectedDisplay
+            }
+
+            tileWindow(Workspace.activeWindow, tileConfig)
+          }
         }
       }
 
       Rectangle {
         id: shapePreview
-        width: ((setWidth / 100) * parent.width) - gap
-        height: ((setHeight / 100) * parent.height) - gap
-        x: ((setX / 100) * parent.width) + (gap / 2)
-        y: ((setY / 100) * parent.height) + (gap / 2)
+        width: 0
+        height: 0
+        x: 0
+        y: 0
         color: selectionColor
       }
 
@@ -266,26 +214,25 @@ Rectangle {
         property double cellWidth: parent.width / cols
         property double cellHeight: parent.height / rows
         id: lines
-        anchors.fill : parent
+        anchors.fill: parent
         visible: true
         onPaint: {
-
           var ctx = getContext("2d")
           ctx.reset()
           ctx.lineWidth = 1
           ctx.strokeStyle = "black"
           ctx.beginPath()
 
-          var nrows = parent.height/cellHeight;
+          var nrows = parent.height/cellHeight
           for(var i=0; i < nrows+1; i++){
-            ctx.moveTo(0, cellHeight*i);
-            ctx.lineTo(parent.width, cellHeight*i);
+            ctx.moveTo(0, cellHeight*i)
+            ctx.lineTo(parent.width, cellHeight*i)
           }
 
           var ncols = parent.width/cellWidth
           for(var j=0; j < ncols+1; j++){
-            ctx.moveTo(cellWidth*j, 0);
-            ctx.lineTo(cellWidth*j, parent.height);
+            ctx.moveTo(cellWidth*j, 0)
+            ctx.lineTo(cellWidth*j, parent.height)
           }
 
           ctx.closePath()
@@ -293,19 +240,5 @@ Rectangle {
         }
       }
     }
-  }
-
-  Component.onCompleted: {
-
-    var db = LocalStorage.openDatabaseSync(database, "1.0", "", 1000000);
-
-    db.transaction(
-      function(tx) {
-        let rs = tx.executeSql('SELECT rowid, * FROM grid');
-        cols = rs.rows[0].x
-        rows = rs.rows[0].y
-        gap = rs.rows[0].gap
-      }
-    )
   }
 }
