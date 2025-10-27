@@ -63,11 +63,7 @@ Rectangle {
       PlasmaComponents.SpinBox {
         width: 0
         height: 0
-        value: gap
         to: 24
-        onValueChanged: {
-          gap = value
-        }
       }
 
       PlasmaComponents.Label {
@@ -133,11 +129,11 @@ Rectangle {
           ) {
             if(!dragging) {
               // mouse hover
-              hoverBox.width = (cellWidth - gap)
-              hoverBox.height = (cellHeight - gap)
-              hoverBox.x = ((cellWidth * getGridX) + (gap / 2))
-              hoverBox.y = ((cellHeight * getGridY) + (gap / 2))
-              
+              hoverBox.width = (cellWidth)
+              hoverBox.height = (cellHeight)
+              hoverBox.x = ((cellWidth * getGridX))
+              hoverBox.y = ((cellHeight * getGridY))
+
             } else {
               // mouse drag
               var directionX = getGridX - storeX
@@ -147,17 +143,17 @@ Rectangle {
               var cellCountY = (directionY < 0 ? directionY * -1 : directionY) + 1
 
               if(directionX < 1) {
-                hoverBox.x = ((cellWidth * getGridX) + (gap / 2))
+                hoverBox.x = ((cellWidth * getGridX))
                 previewX = (cellWidth * getGridX)
               }
 
               if(directionY < 1) {
-                hoverBox.y = ((cellHeight * getGridY) + (gap / 2))
+                hoverBox.y = ((cellHeight * getGridY))
                 previewY = (cellHeight * getGridY)
               }
 
-              hoverBox.width = ((cellWidth * cellCountX) - gap)
-              hoverBox.height = ((cellHeight * cellCountY) - gap)
+              hoverBox.width = ((cellWidth * cellCountX))
+              hoverBox.height = ((cellHeight * cellCountY))
 
               previewWidth = (cellWidth * cellCountX)
               previewHeight = (cellHeight * cellCountY)

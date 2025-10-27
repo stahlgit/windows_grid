@@ -14,7 +14,6 @@ PlasmaCore.Dialog {
   flags: Qt.X11BypassWindowManagerHint | Qt.FramelessWindowHint
   visible: false
 
-  property double gap: 10
   property variant screenList: getScreens()
 
   function getScreens() {
@@ -45,10 +44,10 @@ PlasmaCore.Dialog {
       screen = Workspace.clientArea(KWin.FullScreenArea, Workspace.activeScreen, Workspace.currentDesktop)
     }
 
-    let newWidth = ((tileConfig.width / 100) * (screen.width - gap)) - gap
-    let newHeight = ((tileConfig.height / 100) * (screen.height - gap)) - gap
-    let newX = ((tileConfig.x / 100) * (screen.width - gap)) + gap + screen.x
-    let newY = ((tileConfig.y / 100) * (screen.height - gap)) + gap + screen.y
+    let newWidth = ((tileConfig.width / 100) * (screen.width))
+    let newHeight = ((tileConfig.height / 100) * (screen.height))
+    let newX = ((tileConfig.x / 100) * (screen.width)) + screen.x
+    let newY = ((tileConfig.y / 100) * (screen.height)) + screen.y
 
     window.setMaximize(false, false)
     window.frameGeometry = Qt.rect(newX, newY, newWidth, newHeight)
